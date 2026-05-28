@@ -71,6 +71,7 @@ async def add_product_category(
 
 @router.message(AddProductStates.photos, F.photo)
 async def add_product_photos(message: Message, state: FSMContext) -> None:
+    photo_ids = [message.photo[-1].file_id]
     current = await _append_photos(state, photo_ids)
     await message.answer(
         texts.PRODUCT_ADD_PHOTO_ADDED.format(count=len(current)),
