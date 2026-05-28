@@ -1,19 +1,43 @@
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InputMediaPhoto, Message
 
 from bot import texts
 from bot.callbacks import CarouselCallback, CategoryCallback, NoopCallback
 from bot.db import queries
+from bot.db.queries import Product
 from bot.keyboards.user import carousel_keyboard, main_menu_keyboard
-from bot.utils import send_product_photos
+from bot.utils import format_product_caption, get_photo_at
 
 router = Router()
+
+
+def _resolve_carousel_state(
+    products: list[Product],
+    product_index: int,
+    photo_index: int,
+) -> tuple[int, int, Product, int, str] | None:
+    if not products:
+        return None
+
+    product_index = product_index % len(products)
+    product = products[product_index]
+    photos_total = len(product.photos)
+    if photos_total == 0:
+        return None
+
+    photo_index = photo_index % photos_total
+    photo_id = get_photo_at(product, photo_index)
+    if not photo_id:
+        return None
+
+    return product_index, photo_index, product, photos_total, photo_id
 
 
 async def show_carousel(
     message: Message,
     category_id: int,
     product_index: int,
+    photo_index: int = 0,
 ) -> None:
     products = await queries.list_products_by_category(category_id)
     category = await queries.get_category(category_id)
@@ -30,25 +54,27 @@ async def show_carousel(
         )
         return
 
-    product_index = product_index % len(products)
-    product = products[product_index]
-    if not product.photos:
+    state = _resolve_carousel_state(products, product_index, photo_index)
+    if not state:
         await message.answer("У товара нет фото.")
         return
 
+    product_index, photo_index, product, photos_total, photo_id = state
+    caption = format_product_caption(product)
     keyboard = carousel_keyboard(
         category_id=category_id,
         product_index=product_index,
         products_total=len(products),
         product_id=product.id,
+        photo_index=photo_index,
+        photos_total=photos_total,
     )
-    footer = f"Товар {product_index + 1} / {len(products)}"
 
-    await send_product_photos(
-        message,
-        product,
+    await message.answer_photo(
+        photo=photo_id,
+        caption=caption,
+        parse_mode="HTML",
         reply_markup=keyboard,
-        album_footer=footer,
     )
 
 
@@ -56,7 +82,7 @@ async def show_carousel(
 async def open_category(callback: CallbackQuery, callback_data: CategoryCallback) -> None:
     await callback.answer()
     if callback.message:
-        await show_carousel(callback.message, callback_data.category_id, 0)
+        await show_carousel(callback.message, callback_data.category_id, 0, 0)
 
 
 @router.callback_query(CarouselCallback.filter())
@@ -69,16 +95,44 @@ async def carousel_navigate(
         await callback.answer(texts.EMPTY_CATEGORY, show_alert=True)
         return
 
+    state = _resolve_carousel_state(
+        products,
+        callback_data.product_index,
+        callback_data.photo_index,
+    )
+    if not state:
+        await callback.answer("У товара нет фото.", show_alert=True)
+        return
+
+    product_index, photo_index, product, photos_total, photo_id = state
+    caption = format_product_caption(product)
+    keyboard = carousel_keyboard(
+        category_id=callback_data.category_id,
+        product_index=product_index,
+        products_total=len(products),
+        product_id=product.id,
+        photo_index=photo_index,
+        photos_total=photos_total,
+    )
+
     await callback.answer()
+    if callback.message and callback.message.photo:
+        await callback.message.edit_media(
+            media=InputMediaPhoto(
+                media=photo_id,
+                caption=caption,
+                parse_mode="HTML",
+            ),
+            reply_markup=keyboard,
+        )
+        return
+
     if callback.message:
-        try:
-            await callback.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
         await show_carousel(
             callback.message,
             callback_data.category_id,
-            callback_data.product_index,
+            product_index,
+            photo_index,
         )
 
 
