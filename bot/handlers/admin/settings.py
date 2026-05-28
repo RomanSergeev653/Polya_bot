@@ -6,7 +6,7 @@ from bot import texts
 from bot.db import queries
 from bot.keyboards.admin import admin_main_keyboard
 from bot.middlewares import AdminOnlyMiddleware
-from bot.states import EditContactsStates
+from bot.states import EditContactsStates, EditMenuTextStates
 
 router = Router()
 router.message.middleware(AdminOnlyMiddleware())
@@ -23,5 +23,20 @@ async def save_contacts(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         texts.CONTACTS_UPDATED,
+        reply_markup=admin_main_keyboard(),
+    )
+
+
+@router.message(EditMenuTextStates.text)
+async def save_menu_text(message: Message, state: FSMContext) -> None:
+    text = (message.text or "").strip()
+    if not text:
+        await message.answer(texts.INVALID_INPUT)
+        return
+
+    await queries.set_setting("menu_text", text)
+    await state.clear()
+    await message.answer(
+        texts.MENU_TEXT_UPDATED,
         reply_markup=admin_main_keyboard(),
     )

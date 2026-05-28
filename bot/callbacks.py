@@ -15,7 +15,8 @@ class CategoryCallback(CallbackData, prefix="cat"):
 
 class CarouselCallback(CallbackData, prefix="carousel"):
     category_id: int
-    index: int
+    product_index: int
+    photo_index: int = 0
 
 
 class BackToMenuCallback(CallbackData, prefix="back_menu"):
@@ -30,7 +31,7 @@ class OrderCallback(CallbackData, prefix="order"):
 
 
 class AdminMenuCallback(CallbackData, prefix="adm"):
-    action: str  # categories, products, contacts, back
+    action: str  # categories, products, contacts, menu_text, back
 
 
 class AdminCategoryCallback(CallbackData, prefix="adm_cat"):
@@ -49,12 +50,18 @@ class AdminProductCallback(CallbackData, prefix="adm_p"):
 
 
 class AdminProductEditCallback(CallbackData, prefix="adm_pe"):
-    field: str  # photo, category, title, description, price, sort
+    field: str  # category, title, description, price, sort
     product_id: int
 
 
+class AdminProductPhotoCallback(CallbackData, prefix="adm_ph"):
+    action: str  # list, add, delete, delete_confirm
+    product_id: int = 0
+    photo_id: int = 0
+
+
 class AdminProductAddCallback(CallbackData, prefix="adm_pa"):
-    action: str  # category, confirm, cancel
+    action: str  # category, photos_done, confirm, cancel
     category_id: int = 0
 
 

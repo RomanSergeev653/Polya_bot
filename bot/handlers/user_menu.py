@@ -12,8 +12,9 @@ router = Router()
 
 async def send_main_menu(target: Message) -> None:
     categories = await queries.list_categories()
+    menu_text = await queries.get_setting("menu_text")
     await target.answer(
-        texts.WELCOME,
+        menu_text or texts.WELCOME,
         reply_markup=main_menu_keyboard(categories),
     )
 

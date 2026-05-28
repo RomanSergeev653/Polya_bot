@@ -35,7 +35,13 @@ CATEGORY_DELETE_CONFIRM = (
 )
 
 PRODUCT_ADD_CATEGORY = "Выберите категорию для товара:"
-PRODUCT_ADD_PHOTO = "Отправьте фото товара:"
+PRODUCT_ADD_PHOTO = (
+    "Отправьте фото товара.\n"
+    "Можно отправить несколько — по одному или альбомом.\n"
+    "Когда закончите, нажмите «✅ Готово»."
+)
+PRODUCT_ADD_PHOTO_ADDED = "Фото добавлено ({count}). Отправьте ещё или нажмите «✅ Готово»."
+PRODUCT_ADD_PHOTO_REQUIRED = "Нужно хотя бы одно фото."
 PRODUCT_ADD_TITLE = "Введите название товара:"
 PRODUCT_ADD_DESCRIPTION = "Введите описание:"
 PRODUCT_ADD_PRICE = "Введите цену (текстом, например: 1500 ₽):"
@@ -54,6 +60,16 @@ PRODUCT_UPDATED = "✅ Сохранено."
 
 CONTACTS_EDIT_PROMPT = "Отправьте новый текст для раздела «Контакты»:"
 CONTACTS_UPDATED = "✅ Контакты обновлены."
+
+MENU_TEXT_EDIT_PROMPT = "Отправьте новый текст для главного меню (/start):"
+MENU_TEXT_UPDATED = "✅ Текст меню обновлён."
+
+PRODUCT_PHOTOS_TITLE = "📷 Фото товара «{title}» ({count} шт.)"
+PRODUCT_PHOTO_ADDED = "✅ Фото добавлено."
+PRODUCT_PHOTO_DELETED = "✅ Фото удалено."
+PRODUCT_PHOTO_DELETE_BLOCKED = "Нельзя удалить последнее фото — у товара должно остаться хотя бы одно."
+PRODUCT_PHOTO_ADD_PROMPT = "Отправьте фото для добавления:"
+PRODUCT_PHOTO_DELETE_CONFIRM = "Удалить это фото?"
 
 CANCELLED = "Отменено."
 INVALID_INPUT = "Некорректный ввод. Попробуйте снова."

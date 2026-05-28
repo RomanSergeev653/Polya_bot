@@ -9,8 +9,9 @@ from bot.callbacks import (
     AdminProductCallback,
     AdminProductEditCallback,
     AdminProductListCallback,
+    AdminProductPhotoCallback,
 )
-from bot.db.queries import Category, Product
+from bot.db.queries import Category, Product, ProductPhoto
 
 PRODUCTS_PER_PAGE = 5
 
@@ -19,6 +20,7 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="📂 Категории", callback_data=AdminMenuCallback(action="categories").pack())
     builder.button(text="📦 Товары", callback_data=AdminMenuCallback(action="products").pack())
+    builder.button(text="📝 Текст меню", callback_data=AdminMenuCallback(action="menu_text").pack())
     builder.button(text="📞 Контакты", callback_data=AdminMenuCallback(action="contacts").pack())
     builder.adjust(1)
     return builder.as_markup()
@@ -179,7 +181,7 @@ def admin_product_view_keyboard(product_id: int) -> InlineKeyboardMarkup:
 
 def admin_product_edit_menu_keyboard(product_id: int) -> InlineKeyboardMarkup:
     fields = [
-        ("📷 Фото", "photo"),
+        ("📷 Фото", "photos"),
         ("📁 Категория", "category"),
         ("📌 Название", "title"),
         ("📄 Описание", "description"),
@@ -225,6 +227,69 @@ def admin_add_product_confirm_keyboard() -> InlineKeyboardMarkup:
     builder.button(
         text="❌ Отмена",
         callback_data=AdminProductAddCallback(action="cancel").pack(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_add_product_photos_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="✅ Готово",
+        callback_data=AdminProductAddCallback(action="photos_done").pack(),
+    )
+    builder.button(
+        text="❌ Отмена",
+        callback_data=AdminProductAddCallback(action="cancel").pack(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_product_photos_keyboard(
+    product_id: int,
+    photos: list[ProductPhoto],
+) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="➕ Добавить фото",
+        callback_data=AdminProductPhotoCallback(action="add", product_id=product_id).pack(),
+    )
+    for idx, photo in enumerate(photos, start=1):
+        builder.button(
+            text=f"🗑 Фото {idx}",
+            callback_data=AdminProductPhotoCallback(
+                action="delete",
+                product_id=product_id,
+                photo_id=photo.id,
+            ).pack(),
+        )
+    builder.button(
+        text="🔙 К товару",
+        callback_data=AdminProductCallback(action="view", product_id=product_id).pack(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_product_photo_delete_confirm_keyboard(
+    product_id: int,
+    photo_row_id: int,
+) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="✅ Да, удалить",
+        callback_data=AdminConfirmCallback(
+            action="delete_product_photo",
+            entity_id=photo_row_id,
+        ).pack(),
+    )
+    builder.button(
+        text="❌ Отмена",
+        callback_data=AdminProductPhotoCallback(
+            action="list",
+            product_id=product_id,
+        ).pack(),
     )
     builder.adjust(1)
     return builder.as_markup()

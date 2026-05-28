@@ -13,6 +13,7 @@ from bot.callbacks import (
 from bot.db import queries
 from bot.keyboards.admin import (
     admin_add_product_confirm_keyboard,
+    admin_add_product_photos_keyboard,
     admin_pick_category_keyboard,
     admin_product_delete_confirm_keyboard,
     admin_product_list_keyboard,
@@ -21,11 +22,19 @@ from bot.keyboards.admin import (
 )
 from bot.middlewares import AdminOnlyMiddleware
 from bot.states import AddProductStates
-from bot.utils import format_product_caption
+from bot.utils import format_product_caption, get_photo_at
 
 router = Router()
 router.message.middleware(AdminOnlyMiddleware())
 router.callback_query.middleware(AdminOnlyMiddleware())
+
+
+async def _append_photos(state: FSMContext, photo_ids: list[str]) -> list[str]:
+    data = await state.get_data()
+    current: list[str] = list(data.get("photo_ids", []))
+    current.extend(photo_ids)
+    await state.update_data(photo_ids=current)
+    return current
 
 
 @router.callback_query(AdminProductAddCallback.filter(F.action == "start"))
@@ -49,25 +58,46 @@ async def add_product_category(
     callback_data: AdminProductAddCallback,
     state: FSMContext,
 ) -> None:
-    await state.set_state(AddProductStates.category_id)
-    await state.update_data(category_id=callback_data.category_id)
-    await state.set_state(AddProductStates.photo_id)
+    await state.clear()
+    await state.set_state(AddProductStates.photos)
+    await state.update_data(category_id=callback_data.category_id, photo_ids=[])
     await callback.answer()
     if callback.message:
-        await callback.message.answer(texts.PRODUCT_ADD_PHOTO)
+        await callback.message.answer(
+            texts.PRODUCT_ADD_PHOTO,
+            reply_markup=admin_add_product_photos_keyboard(),
+        )
 
 
-@router.message(AddProductStates.photo_id, F.photo)
-async def add_product_photo(message: Message, state: FSMContext) -> None:
-    photo_id = message.photo[-1].file_id
-    await state.update_data(photo_id=photo_id)
+@router.message(AddProductStates.photos, F.photo)
+async def add_product_photos(message: Message, state: FSMContext) -> None:
+    current = await _append_photos(state, photo_ids)
+    await message.answer(
+        texts.PRODUCT_ADD_PHOTO_ADDED.format(count=len(current)),
+        reply_markup=admin_add_product_photos_keyboard(),
+    )
+
+
+@router.message(AddProductStates.photos)
+async def add_product_photos_invalid(message: Message) -> None:
+    await message.answer(
+        "Отправьте фото или нажмите «✅ Готово».",
+        reply_markup=admin_add_product_photos_keyboard(),
+    )
+
+
+@router.callback_query(AdminProductAddCallback.filter(F.action == "photos_done"))
+async def add_product_photos_done(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    photo_ids: list[str] = data.get("photo_ids", [])
+    if not photo_ids:
+        await callback.answer(texts.PRODUCT_ADD_PHOTO_REQUIRED, show_alert=True)
+        return
+
     await state.set_state(AddProductStates.title)
-    await message.answer(texts.PRODUCT_ADD_TITLE)
-
-
-@router.message(AddProductStates.photo_id)
-async def add_product_photo_invalid(message: Message) -> None:
-    await message.answer("Отправьте фото (не файл и не текст).")
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(texts.PRODUCT_ADD_TITLE)
 
 
 @router.message(AddProductStates.title)
@@ -115,27 +145,50 @@ async def add_product_sort(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     category = await queries.get_category(data["category_id"])
     category_title = category.title if category else "—"
+    photo_ids: list[str] = data.get("photo_ids", [])
+    preview_photo = photo_ids[0] if photo_ids else None
 
     await state.set_state(AddProductStates.confirm)
-    await message.answer_photo(
-        photo=data["photo_id"],
-        caption=texts.PRODUCT_ADD_CONFIRM.format(
-            category=category_title,
-            title=data["title"],
-            price=data["price"],
-            sort_order=sort_order,
-            description=data["description"],
-        ),
-        reply_markup=admin_add_product_confirm_keyboard(),
+    caption = texts.PRODUCT_ADD_CONFIRM.format(
+        category=category_title,
+        title=data["title"],
+        price=data["price"],
+        sort_order=sort_order,
+        description=data["description"],
     )
+    caption += f"\n\n📷 Фото: {len(photo_ids)} шт."
+
+    if preview_photo:
+        await message.answer_photo(
+            photo=preview_photo,
+            caption=caption,
+            reply_markup=admin_add_product_confirm_keyboard(),
+        )
+    else:
+        await message.answer(
+            caption,
+            reply_markup=admin_add_product_confirm_keyboard(),
+        )
 
 
 @router.callback_query(AdminProductAddCallback.filter(F.action == "confirm"))
 async def add_product_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    required = ("category_id", "photo_id", "title", "description", "price", "sort_order")
+    required = (
+        "category_id",
+        "photo_ids",
+        "title",
+        "description",
+        "price",
+        "sort_order",
+    )
     if not all(k in data for k in required):
         await callback.answer("Данные неполные", show_alert=True)
+        return
+
+    photo_ids: list[str] = data.get("photo_ids", [])
+    if not photo_ids:
+        await callback.answer(texts.PRODUCT_ADD_PHOTO_REQUIRED, show_alert=True)
         return
 
     await queries.create_product(
@@ -143,7 +196,7 @@ async def add_product_confirm(callback: CallbackQuery, state: FSMContext) -> Non
         title=data["title"],
         description=data["description"],
         price=data["price"],
-        photo_id=data["photo_id"],
+        photo_ids=photo_ids,
         sort_order=data["sort_order"],
     )
     await state.clear()
@@ -202,11 +255,20 @@ async def admin_product_view(
     if not product:
         await callback.answer("Товар не найден", show_alert=True)
         return
+    photo_id = get_photo_at(product, 0)
+    if not photo_id:
+        await callback.answer("У товара нет фото", show_alert=True)
+        return
+
+    caption = format_product_caption(product, 0)
+    if len(product.photos) > 1:
+        caption += f"\n\n📷 Всего фото: {len(product.photos)}"
+
     await callback.answer()
     if callback.message:
         await callback.message.answer_photo(
-            photo=product.photo_id,
-            caption=format_product_caption(product),
+            photo=photo_id,
+            caption=caption,
             parse_mode="HTML",
             reply_markup=admin_product_view_keyboard(product.id),
         )

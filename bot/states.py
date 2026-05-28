@@ -7,7 +7,7 @@ class AddCategoryStates(StatesGroup):
 
 class AddProductStates(StatesGroup):
     category_id = State()
-    photo_id = State()
+    photos = State()
     title = State()
     description = State()
     price = State()
@@ -19,9 +19,17 @@ class EditProductStates(StatesGroup):
     waiting_value = State()
 
 
+class AddProductPhotoStates(StatesGroup):
+    waiting_photo = State()
+
+
 class EditCategorySortStates(StatesGroup):
     sort_order = State()
 
 
 class EditContactsStates(StatesGroup):
+    text = State()
+
+
+class EditMenuTextStates(StatesGroup):
     text = State()

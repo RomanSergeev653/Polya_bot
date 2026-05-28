@@ -16,24 +16,59 @@ async def init_db() -> None:
         await db.execute("PRAGMA foreign_keys = ON")
         await db.executescript(schema)
         await db.commit()
+        await _migrate_legacy_photos(db)
         await _seed_settings(db)
 
 
+async def _migrate_legacy_photos(db: aiosqlite.Connection) -> None:
+    await db.execute("PRAGMA foreign_keys = ON")
+    cursor = await db.execute("PRAGMA table_info(products)")
+    columns = {row[1] for row in await cursor.fetchall()}
+    if "photo_id" not in columns:
+        return
+
+    cursor = await db.execute(
+        """
+        SELECT p.id, p.photo_id
+        FROM products p
+        WHERE p.photo_id IS NOT NULL AND TRIM(p.photo_id) != ''
+          AND NOT EXISTS (
+              SELECT 1 FROM product_photos pp WHERE pp.product_id = p.id
+          )
+        """
+    )
+    rows = await cursor.fetchall()
+    for product_id, photo_id in rows:
+        await db.execute(
+            """
+            INSERT INTO product_photos (product_id, photo_id, sort_order)
+            VALUES (?, ?, 0)
+            """,
+            (product_id, photo_id),
+        )
+    await db.commit()
+
+
 async def _seed_settings(db: aiosqlite.Connection) -> None:
-    from bot.texts import CONTACTS_DEFAULT
+    from bot.texts import CONTACTS_DEFAULT, WELCOME
 
     await db.execute("PRAGMA foreign_keys = ON")
-    cursor = await db.execute(
-        "SELECT value FROM settings WHERE key = ?",
-        ("contacts",),
-    )
-    row = await cursor.fetchone()
-    if row is None:
-        await db.execute(
-            "INSERT INTO settings (key, value) VALUES (?, ?)",
-            ("contacts", CONTACTS_DEFAULT),
+    defaults = {
+        "contacts": CONTACTS_DEFAULT,
+        "menu_text": WELCOME,
+    }
+    for key, value in defaults.items():
+        cursor = await db.execute(
+            "SELECT value FROM settings WHERE key = ?",
+            (key,),
         )
-        await db.commit()
+        row = await cursor.fetchone()
+        if row is None:
+            await db.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?)",
+                (key, value),
+            )
+    await db.commit()
 
 
 @asynccontextmanager

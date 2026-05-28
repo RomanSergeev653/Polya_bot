@@ -10,7 +10,7 @@ from bot.callbacks import (
     OrderCallback,
 )
 from bot.config import settings
-from bot.db.queries import Category
+from bot.db.queries import Category, Product
 
 
 def main_menu_keyboard(categories: list[Category]) -> InlineKeyboardMarkup:
@@ -30,34 +30,68 @@ def main_menu_keyboard(categories: list[Category]) -> InlineKeyboardMarkup:
 
 def carousel_keyboard(
     category_id: int,
-    index: int,
-    total: int,
+    product_index: int,
+    products_total: int,
     product_id: int,
+    photo_index: int,
+    photos_total: int,
 ) -> InlineKeyboardMarkup:
-    prev_index = (index - 1) % total if total else 0
-    next_index = (index + 1) % total if total else 0
-    position = f"{index + 1} / {total}" if total else "0 / 0"
+    prev_product = (product_index - 1) % products_total if products_total else 0
+    next_product = (product_index + 1) % products_total if products_total else 0
+    product_position = f"{product_index + 1} / {products_total}" if products_total else "0 / 0"
 
     builder = InlineKeyboardBuilder()
-    if total > 0:
+    if products_total > 0:
         builder.row(
             InlineKeyboardButton(
                 text="◀",
                 callback_data=CarouselCallback(
-                    category_id=category_id, index=prev_index
+                    category_id=category_id,
+                    product_index=prev_product,
+                    photo_index=0,
                 ).pack(),
             ),
             InlineKeyboardButton(
-                text=position,
+                text=product_position,
                 callback_data=NoopCallback().pack(),
             ),
             InlineKeyboardButton(
                 text="▶",
                 callback_data=CarouselCallback(
-                    category_id=category_id, index=next_index
+                    category_id=category_id,
+                    product_index=next_product,
+                    photo_index=0,
                 ).pack(),
             ),
         )
+
+    if photos_total > 1:
+        prev_photo = (photo_index - 1) % photos_total
+        next_photo = (photo_index + 1) % photos_total
+        photo_position = f"{photo_index + 1} / {photos_total}"
+        builder.row(
+            InlineKeyboardButton(
+                text="◀ фото",
+                callback_data=CarouselCallback(
+                    category_id=category_id,
+                    product_index=product_index,
+                    photo_index=prev_photo,
+                ).pack(),
+            ),
+            InlineKeyboardButton(
+                text=photo_position,
+                callback_data=NoopCallback().pack(),
+            ),
+            InlineKeyboardButton(
+                text="фото ▶",
+                callback_data=CarouselCallback(
+                    category_id=category_id,
+                    product_index=product_index,
+                    photo_index=next_photo,
+                ).pack(),
+            ),
+        )
+
     if product_id:
         builder.row(
             InlineKeyboardButton(

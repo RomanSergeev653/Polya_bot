@@ -6,20 +6,19 @@ from bot import texts
 from bot.callbacks import AdminProductCallback, AdminProductEditCallback
 from bot.db import queries
 from bot.keyboards.admin import (
-    admin_pick_category_keyboard,
     admin_product_edit_menu_keyboard,
     admin_product_view_keyboard,
 )
 from bot.middlewares import AdminOnlyMiddleware
+from bot.handlers.admin.product_photos import show_product_photos_menu
 from bot.states import EditProductStates
-from bot.utils import format_product_caption
+from bot.utils import format_product_caption, get_photo_at
 
 router = Router()
 router.message.middleware(AdminOnlyMiddleware())
 router.callback_query.middleware(AdminOnlyMiddleware())
 
 FIELD_DB_MAP = {
-    "photo": "photo_id",
     "title": "title",
     "description": "description",
     "price": "price",
@@ -27,7 +26,6 @@ FIELD_DB_MAP = {
 }
 
 FIELD_PROMPTS = {
-    "photo": texts.PRODUCT_ADD_PHOTO,
     "category": "Выберите новую категорию:",
     "title": texts.PRODUCT_ADD_TITLE,
     "description": texts.PRODUCT_ADD_DESCRIPTION,
@@ -51,6 +49,14 @@ async def edit_product_menu(
             f"Что изменить в «{product.title}»?",
             reply_markup=admin_product_edit_menu_keyboard(product.id),
         )
+
+
+@router.callback_query(AdminProductEditCallback.filter(F.field == "photos"))
+async def edit_product_photos_menu(
+    callback: CallbackQuery,
+    callback_data: AdminProductEditCallback,
+) -> None:
+    await show_product_photos_menu(callback, callback_data.product_id)
 
 
 @router.callback_query(AdminProductEditCallback.filter(F.field == "category"))
@@ -99,7 +105,7 @@ async def edit_product_category_apply(
 
 @router.callback_query(
     AdminProductEditCallback.filter(
-        F.field.in_(["photo", "title", "description", "price", "sort"])
+        F.field.in_(["title", "description", "price", "sort"])
     )
 )
 async def edit_product_field_start(
@@ -119,19 +125,9 @@ async def edit_product_field_start(
     )
     await callback.answer()
     if callback.message:
-        await callback.message.answer(FIELD_PROMPTS.get(callback_data.field, "Введите значение:"))
-
-
-@router.message(EditProductStates.waiting_value, F.photo)
-async def edit_product_photo(message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    if data.get("field") != "photo":
-        await message.answer("Ожидался другой тип ввода.")
-        return
-    photo_id = message.photo[-1].file_id
-    await queries.update_product_field(data["product_id"], "photo_id", photo_id)
-    await state.clear()
-    await _reply_updated_product_message(message, data["product_id"])
+        await callback.message.answer(
+            FIELD_PROMPTS.get(callback_data.field, "Введите значение:")
+        )
 
 
 @router.message(EditProductStates.waiting_value)
@@ -140,10 +136,6 @@ async def edit_product_value(message: Message, state: FSMContext) -> None:
     field = data.get("field")
     product_id = data.get("product_id")
     value = (message.text or "").strip()
-
-    if field == "photo":
-        await message.answer("Отправьте фото.")
-        return
 
     if not value:
         await message.answer(texts.INVALID_INPUT)
@@ -167,22 +159,32 @@ async def edit_product_value(message: Message, state: FSMContext) -> None:
 async def _reply_updated_product(callback: CallbackQuery, product_id: int) -> None:
     await callback.answer(texts.PRODUCT_UPDATED)
     product = await queries.get_product(product_id)
-    if product and callback.message:
-        await callback.message.answer_photo(
-            photo=product.photo_id,
-            caption=format_product_caption(product),
-            parse_mode="HTML",
-            reply_markup=admin_product_view_keyboard(product.id),
-        )
+    if not product or not callback.message:
+        return
+    photo_id = get_photo_at(product, 0)
+    if not photo_id:
+        await callback.message.answer("Товар обновлён, но у него нет фото.")
+        return
+    await callback.message.answer_photo(
+        photo=photo_id,
+        caption=format_product_caption(product, 0),
+        parse_mode="HTML",
+        reply_markup=admin_product_view_keyboard(product.id),
+    )
 
 
 async def _reply_updated_product_message(message: Message, product_id: int) -> None:
     product = await queries.get_product(product_id)
     await message.answer(texts.PRODUCT_UPDATED)
-    if product:
-        await message.answer_photo(
-            photo=product.photo_id,
-            caption=format_product_caption(product),
-            parse_mode="HTML",
-            reply_markup=admin_product_view_keyboard(product.id),
-        )
+    if not product:
+        return
+    photo_id = get_photo_at(product, 0)
+    if not photo_id:
+        await message.answer("Товар обновлён, но у него нет фото.")
+        return
+    await message.answer_photo(
+        photo=photo_id,
+        caption=format_product_caption(product, 0),
+        parse_mode="HTML",
+        reply_markup=admin_product_view_keyboard(product.id),
+    )
