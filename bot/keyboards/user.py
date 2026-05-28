@@ -9,8 +9,22 @@ from bot.callbacks import (
     NoopCallback,
     OrderCallback,
 )
-from bot.config import settings
 from bot.db.queries import Category
+
+
+def order_keyboard(contact_url: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Назад в каталог",
+            callback_data=BackToMenuCallback().pack(),
+        ),
+        InlineKeyboardButton(
+            text="💬 Написать сейчас",
+            url=contact_url,
+        ),
+    )
+    return builder.as_markup()
 
 
 def main_menu_keyboard(categories: list[Category]) -> InlineKeyboardMarkup:
@@ -104,21 +118,6 @@ def carousel_keyboard(
             text="🔙 В главное меню",
             callback_data=BackToMenuCallback().pack(),
         )
-    )
-    return builder.as_markup()
-
-
-def order_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(
-            text="🔙 Назад в каталог",
-            callback_data=BackToMenuCallback().pack(),
-        ),
-        InlineKeyboardButton(
-            text="💬 Написать сейчас",
-            url=f"tg://user?id={settings.primary_admin_id}",
-        ),
     )
     return builder.as_markup()
 

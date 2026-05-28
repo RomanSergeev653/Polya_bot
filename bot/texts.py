@@ -64,6 +64,19 @@ CONTACTS_UPDATED = "✅ Контакты обновлены."
 MENU_TEXT_EDIT_PROMPT = "Отправьте новый текст для главного меню (/start):"
 MENU_TEXT_UPDATED = "✅ Текст меню обновлён."
 
+ORDER_CONTACT_EDIT_PROMPT = (
+    "Укажите Telegram для кнопки «💬 Написать сейчас»:\n\n"
+    "Примеры:\n"
+    "• @username\n"
+    "• username\n"
+    "• 123456789 (числовой id)\n"
+    "• https://t.me/username"
+)
+ORDER_CONTACT_UPDATED = "✅ Контакт для заказа обновлён."
+ORDER_CONTACT_INVALID = (
+    "Некорректный формат. Укажите @username, username или числовой Telegram id."
+)
+
 PRODUCT_PHOTOS_TITLE = "📷 Фото товара «{title}» ({count} шт.)"
 PRODUCT_PHOTO_ADDED = "✅ Фото добавлено."
 PRODUCT_PHOTO_DELETED = "✅ Фото удалено."

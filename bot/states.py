@@ -33,3 +33,7 @@ class EditContactsStates(StatesGroup):
 
 class EditMenuTextStates(StatesGroup):
     text = State()
+
+
+class EditOrderContactStates(StatesGroup):
+    value = State()

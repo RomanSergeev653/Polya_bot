@@ -21,6 +21,7 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="📂 Категории", callback_data=AdminMenuCallback(action="categories").pack())
     builder.button(text="📦 Товары", callback_data=AdminMenuCallback(action="products").pack())
     builder.button(text="📝 Текст меню", callback_data=AdminMenuCallback(action="menu_text").pack())
+    builder.button(text="💬 Контакт для заказа", callback_data=AdminMenuCallback(action="order_contact").pack())
     builder.button(text="📞 Контакты", callback_data=AdminMenuCallback(action="contacts").pack())
     builder.adjust(1)
     return builder.as_markup()

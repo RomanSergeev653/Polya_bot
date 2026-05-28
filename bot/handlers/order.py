@@ -5,6 +5,7 @@ from bot import texts
 from bot.callbacks import OrderCallback
 from bot.db import queries
 from bot.keyboards.user import order_keyboard
+from bot.utils import get_order_contact_url
 
 router = Router()
 
@@ -23,8 +24,9 @@ async def want_to_order(callback: CallbackQuery, callback_data: OrderCallback) -
             await callback.message.edit_reply_markup(reply_markup=None)
         except Exception:
             pass
+        contact_url = await get_order_contact_url()
         await callback.message.answer(
             texts.ORDER_INSTRUCTION + extra,
             parse_mode="HTML",
-            reply_markup=order_keyboard(),
+            reply_markup=order_keyboard(contact_url),
         )

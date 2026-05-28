@@ -12,7 +12,7 @@ from bot.keyboards.admin import (
     admin_products_menu_keyboard,
 )
 from bot.middlewares import AdminOnlyMiddleware
-from bot.states import EditContactsStates, EditMenuTextStates
+from bot.states import EditContactsStates, EditMenuTextStates, EditOrderContactStates
 from bot.db import queries
 
 router = Router()
@@ -95,4 +95,17 @@ async def admin_menu_text_start(callback: CallbackQuery, state: FSMContext) -> N
         current = await queries.get_setting("menu_text")
         await callback.message.answer(
             f"{texts.MENU_TEXT_EDIT_PROMPT}\n\nТекущий текст:\n{current or '—'}",
+        )
+
+
+@router.callback_query(AdminMenuCallback.filter(F.action == "order_contact"))
+async def admin_order_contact_start(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(EditOrderContactStates.value)
+    await callback.answer()
+    if callback.message:
+        current = await queries.get_setting("order_contact")
+        fallback = "не задан (используется id первого админа из .env)"
+        await callback.message.answer(
+            f"{texts.ORDER_CONTACT_EDIT_PROMPT}\n\n"
+            f"Текущее значение:\n{current or fallback}",
         )

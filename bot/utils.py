@@ -1,5 +1,8 @@
+import re
+
 from aiogram.types import InputMediaPhoto, Message
 
+from bot.config import settings
 from bot.db.queries import Product
 
 
@@ -16,6 +19,38 @@ def get_photo_at(product: Product, photo_index: int) -> str | None:
         return None
     index = photo_index % len(product.photos)
     return product.photos[index].photo_id
+
+
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{5,32}$")
+
+
+def build_telegram_contact_url(value: str) -> str | None:
+    value = value.strip()
+    if not value:
+        return None
+    if value.startswith(("http://", "https://", "tg://")):
+        return value
+    if value.startswith("@"):
+        username = value[1:].strip()
+        if _USERNAME_RE.fullmatch(username):
+            return f"https://t.me/{username}"
+        return None
+    if value.isdigit():
+        return f"tg://user?id={value}"
+    if _USERNAME_RE.fullmatch(value):
+        return f"https://t.me/{value}"
+    return None
+
+
+async def get_order_contact_url() -> str:
+    from bot.db import queries
+
+    raw = await queries.get_setting("order_contact")
+    if raw:
+        url = build_telegram_contact_url(raw)
+        if url:
+            return url
+    return f"tg://user?id={settings.primary_admin_id}"
 
 
 async def send_product_photos(
