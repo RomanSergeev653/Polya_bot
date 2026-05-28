@@ -22,7 +22,7 @@ from bot.keyboards.admin import (
 )
 from bot.middlewares import AdminOnlyMiddleware
 from bot.states import AddProductStates
-from bot.utils.product_display import send_product_photos
+from bot.utils import send_product_photos
 
 router = Router()
 router.message.middleware(AdminOnlyMiddleware())

@@ -5,7 +5,7 @@ from bot import texts
 from bot.callbacks import CarouselCallback, CategoryCallback, NoopCallback
 from bot.db import queries
 from bot.keyboards.user import carousel_keyboard, main_menu_keyboard
-from bot.utils.product_display import send_product_photos
+from bot.utils import send_product_photos
 
 router = Router()
 
