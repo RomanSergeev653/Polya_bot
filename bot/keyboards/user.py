@@ -10,7 +10,7 @@ from bot.callbacks import (
     OrderCallback,
 )
 from bot.config import settings
-from bot.db.queries import Category, Product
+from bot.db.queries import Category
 
 
 def main_menu_keyboard(categories: list[Category]) -> InlineKeyboardMarkup:
@@ -33,8 +33,6 @@ def carousel_keyboard(
     product_index: int,
     products_total: int,
     product_id: int,
-    photo_index: int,
-    photos_total: int,
 ) -> InlineKeyboardMarkup:
     prev_product = (product_index - 1) % products_total if products_total else 0
     next_product = (product_index + 1) % products_total if products_total else 0
@@ -48,7 +46,6 @@ def carousel_keyboard(
                 callback_data=CarouselCallback(
                     category_id=category_id,
                     product_index=prev_product,
-                    photo_index=0,
                 ).pack(),
             ),
             InlineKeyboardButton(
@@ -60,34 +57,6 @@ def carousel_keyboard(
                 callback_data=CarouselCallback(
                     category_id=category_id,
                     product_index=next_product,
-                    photo_index=0,
-                ).pack(),
-            ),
-        )
-
-    if photos_total > 1:
-        prev_photo = (photo_index - 1) % photos_total
-        next_photo = (photo_index + 1) % photos_total
-        photo_position = f"{photo_index + 1} / {photos_total}"
-        builder.row(
-            InlineKeyboardButton(
-                text="◀ фото",
-                callback_data=CarouselCallback(
-                    category_id=category_id,
-                    product_index=product_index,
-                    photo_index=prev_photo,
-                ).pack(),
-            ),
-            InlineKeyboardButton(
-                text=photo_position,
-                callback_data=NoopCallback().pack(),
-            ),
-            InlineKeyboardButton(
-                text="фото ▶",
-                callback_data=CarouselCallback(
-                    category_id=category_id,
-                    product_index=product_index,
-                    photo_index=next_photo,
                 ).pack(),
             ),
         )

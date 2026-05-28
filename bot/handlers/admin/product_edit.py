@@ -12,7 +12,7 @@ from bot.keyboards.admin import (
 from bot.middlewares import AdminOnlyMiddleware
 from bot.handlers.admin.product_photos import show_product_photos_menu
 from bot.states import EditProductStates
-from bot.utils import format_product_caption, get_photo_at
+from bot.utils.product_display import send_product_photos
 
 router = Router()
 router.message.middleware(AdminOnlyMiddleware())
@@ -161,14 +161,9 @@ async def _reply_updated_product(callback: CallbackQuery, product_id: int) -> No
     product = await queries.get_product(product_id)
     if not product or not callback.message:
         return
-    photo_id = get_photo_at(product, 0)
-    if not photo_id:
-        await callback.message.answer("Товар обновлён, но у него нет фото.")
-        return
-    await callback.message.answer_photo(
-        photo=photo_id,
-        caption=format_product_caption(product, 0),
-        parse_mode="HTML",
+    await send_product_photos(
+        callback.message,
+        product,
         reply_markup=admin_product_view_keyboard(product.id),
     )
 
@@ -178,13 +173,8 @@ async def _reply_updated_product_message(message: Message, product_id: int) -> N
     await message.answer(texts.PRODUCT_UPDATED)
     if not product:
         return
-    photo_id = get_photo_at(product, 0)
-    if not photo_id:
-        await message.answer("Товар обновлён, но у него нет фото.")
-        return
-    await message.answer_photo(
-        photo=photo_id,
-        caption=format_product_caption(product, 0),
-        parse_mode="HTML",
+    await send_product_photos(
+        message,
+        product,
         reply_markup=admin_product_view_keyboard(product.id),
     )

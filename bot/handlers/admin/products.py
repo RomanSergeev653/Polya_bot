@@ -22,7 +22,7 @@ from bot.keyboards.admin import (
 )
 from bot.middlewares import AdminOnlyMiddleware
 from bot.states import AddProductStates
-from bot.utils import format_product_caption, get_photo_at
+from bot.utils.product_display import send_product_photos
 
 router = Router()
 router.message.middleware(AdminOnlyMiddleware())
@@ -256,21 +256,15 @@ async def admin_product_view(
     if not product:
         await callback.answer("Товар не найден", show_alert=True)
         return
-    photo_id = get_photo_at(product, 0)
-    if not photo_id:
+    if not product.photos:
         await callback.answer("У товара нет фото", show_alert=True)
         return
 
-    caption = format_product_caption(product, 0)
-    if len(product.photos) > 1:
-        caption += f"\n\n📷 Всего фото: {len(product.photos)}"
-
     await callback.answer()
     if callback.message:
-        await callback.message.answer_photo(
-            photo=photo_id,
-            caption=caption,
-            parse_mode="HTML",
+        await send_product_photos(
+            callback.message,
+            product,
             reply_markup=admin_product_view_keyboard(product.id),
         )
 

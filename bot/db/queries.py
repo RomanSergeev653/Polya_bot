@@ -81,13 +81,37 @@ async def _load_photos_for_products(products: list[Product]) -> list[Product]:
         )
         rows = await cursor.fetchall()
 
-    photos_by_product: dict[int, list[ProductPhoto]] = {p.id: [] for p in products}
-    for row in rows:
-        photo = _row_to_photo(row)
-        photos_by_product[photo.product_id].append(photo)
+        photos_by_product: dict[int, list[ProductPhoto]] = {p.id: [] for p in products}
+        for row in rows:
+            photo = _row_to_photo(row)
+            photos_by_product[photo.product_id].append(photo)
 
-    for product in products:
-        product.photos = photos_by_product.get(product.id, [])
+        cursor = await db.execute("PRAGMA table_info(products)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        legacy_photo_id = "photo_id" in columns
+
+        for product in products:
+            product.photos = photos_by_product.get(product.id, [])
+            if product.photos or not legacy_photo_id:
+                continue
+            legacy = await db.execute(
+                """
+                SELECT photo_id FROM products
+                WHERE id = ? AND photo_id IS NOT NULL AND TRIM(photo_id) != ''
+                """,
+                (product.id,),
+            )
+            legacy_row = await legacy.fetchone()
+            if legacy_row:
+                product.photos = [
+                    ProductPhoto(
+                        id=0,
+                        product_id=product.id,
+                        photo_id=legacy_row["photo_id"],
+                        sort_order=0,
+                    )
+                ]
+
     return products
 
 

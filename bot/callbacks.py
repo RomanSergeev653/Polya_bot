@@ -16,7 +16,6 @@ class CategoryCallback(CallbackData, prefix="cat"):
 class CarouselCallback(CallbackData, prefix="carousel"):
     category_id: int
     product_index: int
-    photo_index: int = 0
 
 
 class BackToMenuCallback(CallbackData, prefix="back_menu"):
